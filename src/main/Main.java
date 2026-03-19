@@ -14,14 +14,10 @@ public class Main {
 
     public static void main(String[] args) {
 
-        // Use the system look-and-feel for a native appearance
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            // Fall back to default Swing look-and-feel
-        }
+        } catch (Exception e) {}
 
-        // Launch the Login form on the Event Dispatch Thread (EDT)
         SwingUtilities.invokeLater(() -> {
             LoginForm loginForm = new LoginForm();
             loginForm.setVisible(true);
