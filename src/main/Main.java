@@ -1,26 +1,30 @@
 package main;
+
+import db.DBConnection;
 import view.LoginForm;
+
 import javax.swing.*;
+
 /**
- * Main - Entry point of the Hotel Reservation System.
- *
- * Run this class to start the application.
- * Make sure:
- *  1. MySQL is running and the schema has been imported.
- *  2. The MySQL Connector/J JAR is on the classpath.
- *  3. DBConnection.java has the correct DB credentials.
+ * Main - Application entry point.
+ * Initialises the database and launches the LoginForm.
  */
 public class Main {
 
     public static void main(String[] args) {
 
+        // ── 1. Set a native look & feel ───────────────────
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {}
+        } catch (Exception ignored) {}
 
+        // ── 2. Initialise SQLite database on first run ────
+        DBConnection.initializeDatabase();
+
+        // ── 3. Launch GUI on the Event Dispatch Thread ────
         SwingUtilities.invokeLater(() -> {
-            LoginForm loginForm = new LoginForm();
-            loginForm.setVisible(true);
+            LoginForm login = new LoginForm();
+            login.setVisible(true);
         });
     }
 }

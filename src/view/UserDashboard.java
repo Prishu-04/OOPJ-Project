@@ -6,82 +6,100 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * UserDashboard - Main hub for logged-in customers.
+ * UserDashboard - Main screen for logged-in customers.
  */
 public class UserDashboard extends JFrame {
 
-    private User currentUser;
+    private final User user;
 
-    public UserDashboard(User currentUser) {
-        this.currentUser = currentUser;
-        setTitle("Customer Dashboard - Hotel Reservation System");
-        setSize(480, 420);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setResizable(false);
+    private static final Color BG      = new Color(245, 248, 250);
+    private static final Color HEADER  = new Color(41,  128, 185);
+    private static final Color GRN     = new Color(39,  174, 96);
+    private static final Color ORG     = new Color(230, 126, 34);
+    private static final Color RED     = new Color(192, 57,  43);
+    private static final Color PRP     = new Color(142, 68,  173);
+    private static final Color WHITE   = Color.WHITE;
+
+    public UserDashboard(User user) {
+        this.user = user;
         initUI();
     }
 
     private void initUI() {
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
-        mainPanel.setBackground(new Color(245, 255, 245));
+        setTitle(user.getDashboardTitle()); // Polymorphism
+        setSize(640, 480);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setResizable(false);
 
-        // ---- Header ----
-        JLabel lblWelcome = new JLabel("Welcome, " + currentUser.getName(),
-                                       SwingConstants.CENTER);
-        lblWelcome.setFont(new Font("Arial", Font.BOLD, 16));
-        lblWelcome.setForeground(new Color(30, 130, 60));
-        mainPanel.add(lblWelcome, BorderLayout.NORTH);
+        JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(BG);
 
-        // ---- Buttons ----
-        JPanel btnPanel = new JPanel(new GridLayout(6, 1, 10, 10));
-        btnPanel.setBackground(new Color(245, 255, 245));
+        // ── Header ────────────────────────────────────────
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(HEADER);
+        header.setPreferredSize(new Dimension(640, 70));
+        header.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 20));
 
-        JButton btnViewRooms    = createBtn("View Available Rooms", new Color(30, 130, 60));
-        JButton btnBookRoom     = createBtn("Book a Room",          new Color(30, 130, 60));
-        JButton btnMyBookings   = createBtn("My Bookings",          new Color(30, 130, 60));
-        JButton btnCancelBooking= createBtn("Cancel Booking",       new Color(180, 100, 20));
-        JButton btnPayment      = createBtn("Make Payment",         new Color(30, 100, 180));
-        JButton btnLogout       = createBtn("Logout",               new Color(180, 40, 40));
+        JLabel title = new JLabel("🏨  Hotel Reservation System");
+        title.setFont(new Font("SansSerif", Font.BOLD, 20));
+        title.setForeground(WHITE);
+        header.add(title, BorderLayout.WEST);
 
-        btnPanel.add(btnViewRooms);
-        btnPanel.add(btnBookRoom);
-        btnPanel.add(btnMyBookings);
-        btnPanel.add(btnCancelBooking);
-        btnPanel.add(btnPayment);
-        btnPanel.add(btnLogout);
+        JLabel welcome = new JLabel("Hello, " + user.getName() + "  ");
+        welcome.setFont(new Font("SansSerif", Font.ITALIC, 13));
+        welcome.setForeground(new Color(210, 235, 255));
+        header.add(welcome, BorderLayout.EAST);
 
-        mainPanel.add(btnPanel, BorderLayout.CENTER);
-        add(mainPanel);
+        main.add(header, BorderLayout.NORTH);
 
-        // ---- Events ----
-        btnViewRooms.addActionListener(e -> new ViewRoomsForm().setVisible(true));
+        // ── Centre panel ──────────────────────────────────
+        JPanel centre = new JPanel(new BorderLayout());
+        centre.setBackground(BG);
 
-        btnBookRoom.addActionListener(e -> new BookingForm(currentUser).setVisible(true));
+        JLabel subTitle = new JLabel("What would you like to do?", SwingConstants.CENTER);
+        subTitle.setFont(new Font("SansSerif", Font.BOLD, 15));
+        subTitle.setForeground(new Color(44, 62, 80));
+        subTitle.setBorder(BorderFactory.createEmptyBorder(18, 0, 8, 0));
+        centre.add(subTitle, BorderLayout.NORTH);
 
-        btnMyBookings.addActionListener(e -> new MyBookingsForm(currentUser).setVisible(true));
+        JPanel btnGrid = new JPanel(new GridLayout(2, 3, 15, 15));
+        btnGrid.setBackground(BG);
+        btnGrid.setBorder(BorderFactory.createEmptyBorder(10, 40, 30, 40));
 
-        btnCancelBooking.addActionListener(e -> new CancelBookingForm(currentUser).setVisible(true));
+        btnGrid.add(dBtn("🛏️  View Rooms",       HEADER, e -> new ViewRoomsForm(false).setVisible(true)));
+        btnGrid.add(dBtn("🔍  Search Rooms",      HEADER, e -> new ViewRoomsForm(false).setVisible(true)));
+        btnGrid.add(dBtn("📅  Book a Room",       GRN,    e -> new BookingForm(user).setVisible(true)));
+        btnGrid.add(dBtn("📋  My Bookings",       PRP,    e -> new MyBookingsForm(user, false).setVisible(true)));
+        btnGrid.add(dBtn("❌  Cancel Booking",    ORG,    e -> new CancelBookingForm(user).setVisible(true)));
+        btnGrid.add(dBtn("🚪  Logout",            RED,    e -> logout()));
 
-        btnPayment.addActionListener(e -> new PaymentForm(currentUser).setVisible(true));
-
-        btnLogout.addActionListener(e -> {
-            int confirm = JOptionPane.showConfirmDialog(this,
-                "Are you sure you want to logout?", "Logout", JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-                new LoginForm().setVisible(true);
-                dispose();
-            }
-        });
+        centre.add(btnGrid, BorderLayout.CENTER);
+        main.add(centre, BorderLayout.CENTER);
+        add(main);
     }
 
-    private JButton createBtn(String text, Color bg) {
-        JButton btn = new JButton(text);
+    private void logout() {
+        int c = JOptionPane.showConfirmDialog(this,
+            "Logout from the system?", "Confirm Logout",
+            JOptionPane.YES_NO_OPTION);
+        if (c == JOptionPane.YES_OPTION) {
+            new LoginForm().setVisible(true);
+            dispose();
+        }
+    }
+
+    private JButton dBtn(String text, Color bg,
+                         java.awt.event.ActionListener al) {
+        JButton btn = new JButton("<html><center>" + text + "</center></html>");
         btn.setBackground(bg);
-        btn.setForeground(Color.WHITE);
-        btn.setFont(new Font("Arial", Font.BOLD, 13));
+        btn.setForeground(WHITE);
+        btn.setFont(new Font("SansSerif", Font.BOLD, 13));
         btn.setFocusPainted(false);
+        btn.setBorderPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension(160, 70));
+        btn.addActionListener(al);
         return btn;
     }
 }

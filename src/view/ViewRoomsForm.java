@@ -9,103 +9,148 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * ViewRoomsForm - Customer can view and filter available rooms.
+ * ViewRoomsForm - Displays rooms for admin (all rooms) and customers (available only).
+ * Supports search/filter by room type.
  */
 public class ViewRoomsForm extends JFrame {
 
-    private JTable            table;
+    private JTable table;
     private DefaultTableModel tableModel;
-    private JComboBox<String> cbType, cbStatus;
-    private JButton           btnSearch, btnClear, btnClose;
+    private JTextField tfSearch;
+    private JComboBox<String> cbFilter;
 
-    private RoomDAO roomDAO = new RoomDAO();
+    private final RoomDAO  roomDAO;
+    private final boolean  isAdmin;
 
-    public ViewRoomsForm() {
-        setTitle("View Rooms");
-        setSize(680, 460);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
+    private static final Color BG    = new Color(245, 247, 250);
+    private static final Color HDR   = new Color(41,  128, 185);
+    private static final Color WHITE = Color.WHITE;
+
+    public ViewRoomsForm(boolean isAdmin) {
+        this.isAdmin = isAdmin;
+        this.roomDAO = new RoomDAO();
         initUI();
         loadRooms(null, null);
     }
 
     private void initUI() {
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        setTitle(isAdmin ? "All Rooms" : "Available Rooms");
+        setSize(700, 460);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
 
-        // ---- Filter bar ----
-        JPanel filterPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
-        filterPanel.setBackground(new Color(230, 240, 255));
-        filterPanel.setBorder(BorderFactory.createTitledBorder("Filter Rooms"));
+        JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(BG);
 
-        filterPanel.add(new JLabel("Type:"));
-        cbType = new JComboBox<>(new String[]{"All","Single","Double","Suite","Deluxe"});
-        filterPanel.add(cbType);
+        // Header
+        JPanel header = new JPanel(new GridBagLayout());
+        header.setBackground(HDR);
+        header.setPreferredSize(new Dimension(700, 55));
+        JLabel title = new JLabel(isAdmin ? "🛏️  All Hotel Rooms" : "🛏️  Available Rooms");
+        title.setFont(new Font("SansSerif", Font.BOLD, 16));
+        title.setForeground(WHITE);
+        header.add(title);
+        main.add(header, BorderLayout.NORTH);
 
-        filterPanel.add(new JLabel("  Status:"));
-        cbStatus = new JComboBox<>(new String[]{"All","Available","Booked","Maintenance"});
-        filterPanel.add(cbStatus);
+        // ── Search bar ────────────────────────────────────
+        JPanel searchBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 8));
+        searchBar.setBackground(BG);
 
-        btnSearch = new JButton("Search");
-        btnSearch.setBackground(new Color(30, 100, 180));
-        btnSearch.setForeground(Color.WHITE);
+        searchBar.add(new JLabel("Search:"));
+        tfSearch = new JTextField(12);
+        tfSearch.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        searchBar.add(tfSearch);
+
+        searchBar.add(new JLabel("Filter by Type:"));
+        cbFilter = new JComboBox<>(new String[]{
+            "All", "Single", "Double", "Suite", "Deluxe", "Family"
+        });
+        cbFilter.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        searchBar.add(cbFilter);
+
+        JButton btnSearch = new JButton("🔍 Search");
+        btnSearch.setBackground(HDR);
+        btnSearch.setForeground(WHITE);
         btnSearch.setFocusPainted(false);
+        btnSearch.setBorderPainted(false);
+        btnSearch.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        searchBar.add(btnSearch);
 
-        btnClear = new JButton("Clear");
+        JButton btnAll = new JButton("Show All");
+        btnAll.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        btnAll.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        searchBar.add(btnAll);
 
-        filterPanel.add(btnSearch);
-        filterPanel.add(btnClear);
+        main.add(searchBar, BorderLayout.BEFORE_FIRST_LINE); // replaces later
 
-        mainPanel.add(filterPanel, BorderLayout.NORTH);
-
-        // ---- Table ----
-        String[] cols = {"ID", "Room No", "Type", "Price / Night (₹)", "Status"};
+        // ── Table ─────────────────────────────────────────
+        String[] cols = {"Room ID", "Room No", "Type", "Price / Night (₹)", "Status"};
         tableModel = new DefaultTableModel(cols, 0) {
             @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         table = new JTable(tableModel);
-        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
-        table.setRowHeight(24);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        table.setRowHeight(26);
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        table.getTableHeader().setBackground(HDR);
+        table.getTableHeader().setForeground(WHITE);
+        table.setSelectionBackground(new Color(174, 214, 241));
+        table.setGridColor(new Color(220, 220, 220));
 
-        mainPanel.add(new JScrollPane(table), BorderLayout.CENTER);
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createEmptyBorder(5, 15, 5, 15));
 
-        // ---- Bottom ----
-        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        btnClose = new JButton("Close");
-        bottomPanel.add(btnClose);
-        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+        // Combine search + table
+        JPanel centre = new JPanel(new BorderLayout());
+        centre.setBackground(BG);
+        centre.add(searchBar, BorderLayout.NORTH);
+        centre.add(scroll, BorderLayout.CENTER);
+        main.add(centre, BorderLayout.CENTER);
 
-        add(mainPanel);
+        // Footer info label
+        JLabel info = new JLabel(
+            isAdmin ? "Admin view: all rooms shown."
+                    : "Showing available rooms. Select a room and click Book.",
+            SwingConstants.CENTER
+        );
+        info.setFont(new Font("SansSerif", Font.ITALIC, 11));
+        info.setForeground(Color.GRAY);
+        info.setBorder(BorderFactory.createEmptyBorder(5, 0, 8, 0));
+        main.add(info, BorderLayout.SOUTH);
 
-        // ---- Events ----
+        add(main);
+
+        // Listeners
         btnSearch.addActionListener(e -> {
-            String type   = (String) cbType.getSelectedItem();
-            String status = (String) cbStatus.getSelectedItem();
-            loadRooms(type, status);
+            String keyword = tfSearch.getText().trim();
+            String type    = cbFilter.getSelectedItem().toString();
+            loadRooms("All".equals(type) ? null : type, keyword.isEmpty() ? null : keyword);
         });
-
-        btnClear.addActionListener(e -> {
-            cbType.setSelectedIndex(0);
-            cbStatus.setSelectedIndex(0);
-            loadRooms(null, null);
-        });
-
-        btnClose.addActionListener(e -> dispose());
+        btnAll.addActionListener(e -> { tfSearch.setText(""); cbFilter.setSelectedIndex(0); loadRooms(null, null); });
     }
 
-    private void loadRooms(String type, String status) {
+    private void loadRooms(String type, String keyword) {
         tableModel.setRowCount(0);
-        List<Room> rooms = roomDAO.searchRooms(type, status);
+        List<Room> rooms;
+
+        if (type != null) {
+            rooms = roomDAO.searchRoomsByType(type);
+        } else if (isAdmin) {
+            rooms = roomDAO.getAllRooms();
+        } else {
+            rooms = roomDAO.getAvailableRooms();
+        }
+
         for (Room r : rooms) {
+            // If customer typed keyword, filter client-side
+            if (keyword != null && !r.getRoomNumber().contains(keyword)
+                    && !r.getRoomType().toLowerCase().contains(keyword.toLowerCase())) {
+                continue;
+            }
             tableModel.addRow(new Object[]{
                 r.getRoomId(), r.getRoomNumber(), r.getRoomType(),
                 String.format("%.2f", r.getPrice()), r.getStatus()
             });
-        }
-        if (rooms.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                "No rooms found for the selected filter.", "No Results",
-                JOptionPane.INFORMATION_MESSAGE);
         }
     }
 }

@@ -1,7 +1,6 @@
 package view;
 
 import dao.UserDAO;
-import model.User;
 
 import javax.swing.*;
 import java.awt.*;
@@ -11,149 +10,201 @@ import java.awt.*;
  */
 public class RegisterForm extends JFrame {
 
-    private JTextField     tfName, tfEmail, tfPhone;
-    private JPasswordField pfPassword, pfConfirm;
-    private JButton        btnRegister, btnBack;
+    private JTextField     tfName;
+    private JTextField     tfEmail;
+    private JTextField     tfPhone;
+    private JPasswordField pfPassword;
+    private JPasswordField pfConfirm;
 
-    private UserDAO userDAO = new UserDAO();
+    private final UserDAO userDAO = new UserDAO();
+
+    private static final Color BG      = new Color(245, 247, 250);
+    private static final Color PRIMARY = new Color(41,  128, 185);
+    private static final Color ACCENT  = new Color(39,  174, 96);
+    private static final Color DARK    = new Color(44,  62,  80);
+    private static final Color WHITE   = Color.WHITE;
 
     public RegisterForm() {
-        setTitle("Register - Hotel Reservation System");
-        setSize(430, 420);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setResizable(false);
-
         initUI();
     }
 
     private void initUI() {
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
-        mainPanel.setBackground(new Color(245, 245, 245));
+        setTitle("Hotel Reservation System — Register");
+        setSize(460, 460);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setResizable(false);
 
-        JLabel lblTitle = new JLabel("Customer Registration", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Arial", Font.BOLD, 18));
-        lblTitle.setForeground(new Color(30, 80, 150));
-        mainPanel.add(lblTitle, BorderLayout.NORTH);
+        JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(BG);
 
-        // ---- Form ----
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBackground(new Color(245, 245, 245));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(7, 5, 7, 5);
-        gbc.fill = GridBagConstraints.HORIZONTAL;
+        // Header
+        JPanel header = new JPanel(new GridBagLayout());
+        header.setBackground(PRIMARY);
+        header.setPreferredSize(new Dimension(460, 70));
+        JLabel title = new JLabel("Create New Account");
+        title.setFont(new Font("SansSerif", Font.BOLD, 18));
+        title.setForeground(WHITE);
+        header.add(title);
+        main.add(header, BorderLayout.NORTH);
 
-        String[] labels = {"Full Name:", "Email:", "Phone:", "Password:", "Confirm Password:"};
-        gbc.gridx = 0; gbc.gridy = 0;
-        for (String lbl : labels) {
-            formPanel.add(new JLabel(lbl), gbc);
-            gbc.gridy++;
-        }
+        // Form
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setBackground(BG);
+        form.setBorder(BorderFactory.createEmptyBorder(20, 40, 10, 40));
+        GridBagConstraints g = new GridBagConstraints();
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.insets = new Insets(7, 5, 7, 5);
 
-        tfName    = new JTextField(20);
-        tfEmail   = new JTextField(20);
-        tfPhone   = new JTextField(20);
-        pfPassword = new JPasswordField(20);
-        pfConfirm  = new JPasswordField(20);
+        // Full Name
+        g.gridx = 0; g.gridy = 0; form.add(lbl("Full Name:"), g);
+        g.gridx = 1; tfName = tf(); form.add(tfName, g);
 
-        JComponent[] fields = {tfName, tfEmail, tfPhone, pfPassword, pfConfirm};
-        gbc.gridx = 1; gbc.gridy = 0;
-        for (JComponent f : fields) {
-            formPanel.add(f, gbc);
-            gbc.gridy++;
-        }
+        // Email
+        g.gridx = 0; g.gridy = 1; form.add(lbl("Email:"), g);
+        g.gridx = 1; tfEmail = tf(); form.add(tfEmail, g);
 
-        mainPanel.add(formPanel, BorderLayout.CENTER);
+        // Phone
+        g.gridx = 0; g.gridy = 2; form.add(lbl("Phone:"), g);
+        g.gridx = 1; tfPhone = tf(); form.add(tfPhone, g);
 
-        // ---- Buttons ----
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
-        btnPanel.setBackground(new Color(245, 245, 245));
+        // Password
+        g.gridx = 0; g.gridy = 3; form.add(lbl("Password:"), g);
+        g.gridx = 1; pfPassword = pf(); form.add(pfPassword, g);
 
-        btnRegister = new JButton("Register");
-        btnRegister.setBackground(new Color(30, 130, 60));
-        btnRegister.setForeground(Color.WHITE);
-        btnRegister.setFocusPainted(false);
-        btnRegister.setPreferredSize(new Dimension(110, 35));
+        // Confirm Password
+        g.gridx = 0; g.gridy = 4; form.add(lbl("Confirm Password:"), g);
+        g.gridx = 1; pfConfirm = pf(); form.add(pfConfirm, g);
 
-        btnBack = new JButton("Back to Login");
-        btnBack.setPreferredSize(new Dimension(120, 35));
+        // Register button
+        g.gridx = 0; g.gridy = 5; g.gridwidth = 2;
+        JButton btnReg = btn("Register", ACCENT);
+        form.add(btnReg, g);
 
-        btnPanel.add(btnRegister);
-        btnPanel.add(btnBack);
-        mainPanel.add(btnPanel, BorderLayout.SOUTH);
+        // Back to login
+        g.gridy = 6;
+        JButton btnBack = new JButton("← Back to Login");
+        btnBack.setBorderPainted(false);
+        btnBack.setContentAreaFilled(false);
+        btnBack.setForeground(PRIMARY);
+        btnBack.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        btnBack.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        form.add(btnBack, g);
 
-        add(mainPanel);
+        main.add(form, BorderLayout.CENTER);
+        add(main);
 
-        // ---- Events ----
-        btnRegister.addActionListener(e -> doRegister());
+        getRootPane().setDefaultButton(btnReg);
+        btnReg.addActionListener(e -> handleRegister());
         btnBack.addActionListener(e -> {
             new LoginForm().setVisible(true);
             dispose();
         });
     }
 
-    private void doRegister() {
+    private void handleRegister() {
         String name     = tfName.getText().trim();
         String email    = tfEmail.getText().trim();
         String phone    = tfPhone.getText().trim();
         String password = new String(pfPassword.getPassword()).trim();
         String confirm  = new String(pfConfirm.getPassword()).trim();
 
-        // ---- Validations ----
-        if (name.isEmpty() || email.isEmpty() || phone.isEmpty()
-                || password.isEmpty() || confirm.isEmpty()) {
+        // ── Validation ────────────────────────────────────
+        if (name.isEmpty() || email.isEmpty() || phone.isEmpty() || password.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                "All fields are required.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+                "All fields are required.", "Validation Error",
+                JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        if (!email.contains("@") || !email.contains(".")) {
+        if (!email.matches("^[\\w._%+\\-]+@[\\w.\\-]+\\.[a-zA-Z]{2,}$")) {
             JOptionPane.showMessageDialog(this,
-                "Please enter a valid email address.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+                "Please enter a valid email address.", "Validation Error",
+                JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        if (phone.length() < 10) {
+        if (!phone.matches("\\d{10}")) {
             JOptionPane.showMessageDialog(this,
-                "Phone number must be at least 10 digits.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+                "Phone number must be 10 digits.", "Validation Error",
+                JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         if (password.length() < 6) {
             JOptionPane.showMessageDialog(this,
-                "Password must be at least 6 characters.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+                "Password must be at least 6 characters.", "Validation Error",
+                JOptionPane.WARNING_MESSAGE);
             return;
         }
 
         if (!password.equals(confirm)) {
             JOptionPane.showMessageDialog(this,
-                "Passwords do not match.", "Validation Error", JOptionPane.WARNING_MESSAGE);
+                "Passwords do not match.", "Validation Error",
+                JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        // Check duplicate email
         if (userDAO.emailExists(email)) {
             JOptionPane.showMessageDialog(this,
-                "This email is already registered. Please use a different email.",
-                "Duplicate Email", JOptionPane.WARNING_MESSAGE);
+                "This email is already registered.", "Duplicate Email",
+                JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        // Create user object and save
-        User newUser = new User(name, email, phone, password, "customer");
-        boolean success = userDAO.add(newUser);
-
+        boolean success = userDAO.registerUser(name, email, phone, password);
         if (success) {
             JOptionPane.showMessageDialog(this,
-                "Registration successful! You can now login.",
-                "Success", JOptionPane.INFORMATION_MESSAGE);
+                "Registration successful! Please login.", "Success",
+                JOptionPane.INFORMATION_MESSAGE);
             new LoginForm().setVisible(true);
             dispose();
         } else {
             JOptionPane.showMessageDialog(this,
-                "Registration failed. Please try again.",
-                "Error", JOptionPane.ERROR_MESSAGE);
+                "Registration failed. Please try again.", "Error",
+                JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    // ── Helpers ───────────────────────────────────────────
+
+    private JLabel lbl(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(new Font("SansSerif", Font.BOLD, 13));
+        l.setForeground(DARK);
+        return l;
+    }
+
+    private JTextField tf() {
+        JTextField t = new JTextField();
+        styleComp(t);
+        return t;
+    }
+
+    private JPasswordField pf() {
+        JPasswordField p = new JPasswordField();
+        styleComp(p);
+        return p;
+    }
+
+    private void styleComp(JComponent c) {
+        c.setPreferredSize(new Dimension(200, 30));
+        c.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        c.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(189, 195, 199)),
+            BorderFactory.createEmptyBorder(3, 7, 3, 7)
+        ));
+    }
+
+    private JButton btn(String text, Color bg) {
+        JButton b = new JButton(text);
+        b.setBackground(bg);
+        b.setForeground(WHITE);
+        b.setFont(new Font("SansSerif", Font.BOLD, 14));
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setPreferredSize(new Dimension(200, 36));
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return b;
     }
 }

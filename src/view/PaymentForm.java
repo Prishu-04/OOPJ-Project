@@ -1,196 +1,168 @@
 package view;
 
-import dao.BookingDAO;
 import dao.PaymentDAO;
-import model.Booking;
-import model.Payment;
-import model.User;
 
 import javax.swing.*;
 import java.awt.*;
-import java.sql.Date;
-import java.util.List;
+import java.time.LocalDate;
 
 /**
- * PaymentForm - Customer records a payment against one of their Confirmed bookings.
+ * PaymentForm - Collect payment details after a booking is confirmed.
+ * Inserts a record into the payments table.
  */
 public class PaymentForm extends JFrame {
 
-    private JComboBox<String> cbBooking;
-    private JTextField        tfAmount;
     private JComboBox<String> cbMethod;
-    private JButton           btnPay, btnClose;
+    private JLabel            lblAmount;
+    private JLabel            lblBookingId;
 
-    private User       currentUser;
-    private BookingDAO bookingDAO  = new BookingDAO();
-    private PaymentDAO paymentDAO  = new PaymentDAO();
+    private final int        bookingId;
+    private final double     amount;
+    private final PaymentDAO paymentDAO = new PaymentDAO();
 
-    // Store fetched bookings for cross-reference
-    private List<Booking> confirmedBookings;
+    private static final Color BG    = new Color(245, 247, 250);
+    private static final Color HDR   = new Color(41,  128, 185);
+    private static final Color GRN   = new Color(39,  174, 96);
+    private static final Color WHITE = Color.WHITE;
+    private static final Color DARK  = new Color(44,  62,  80);
 
-    public PaymentForm(User currentUser) {
-        this.currentUser = currentUser;
-        setTitle("Make Payment");
-        setSize(420, 330);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setResizable(false);
+    public PaymentForm(int bookingId, double amount) {
+        this.bookingId = bookingId;
+        this.amount    = amount;
         initUI();
     }
 
     private void initUI() {
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 25, 15, 25));
-        mainPanel.setBackground(Color.WHITE);
+        setTitle("Payment — Booking #" + bookingId);
+        setSize(430, 390);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setResizable(false);
 
-        JLabel lblTitle = new JLabel("Payment", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Arial", Font.BOLD, 16));
-        lblTitle.setForeground(new Color(30, 80, 150));
-        mainPanel.add(lblTitle, BorderLayout.NORTH);
+        JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(BG);
 
-        // ---- Form ----
-        JPanel formPanel = new JPanel(new GridBagLayout());
-        formPanel.setBackground(Color.WHITE);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets  = new Insets(9, 5, 9, 5);
-        gbc.fill    = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1;
+        // Header
+        JPanel header = new JPanel(new GridBagLayout());
+        header.setBackground(HDR);
+        header.setPreferredSize(new Dimension(430, 60));
+        JLabel title = new JLabel("💳  Payment Gateway");
+        title.setFont(new Font("SansSerif", Font.BOLD, 17));
+        title.setForeground(WHITE);
+        header.add(title);
+        main.add(header, BorderLayout.NORTH);
 
-        // Select Booking
-        gbc.gridx = 0; gbc.gridy = 0;
-        formPanel.add(new JLabel("Select Booking:"), gbc);
-        gbc.gridx = 1;
-        cbBooking = new JComboBox<>();
-        loadConfirmedBookings();
-        formPanel.add(cbBooking, gbc);
+        // Form
+        JPanel form = new JPanel(new GridBagLayout());
+        form.setBackground(BG);
+        form.setBorder(BorderFactory.createEmptyBorder(25, 45, 15, 45));
+        GridBagConstraints g = new GridBagConstraints();
+        g.fill = GridBagConstraints.HORIZONTAL;
+        g.insets = new Insets(10, 5, 10, 5);
+
+        // Booking ID
+        g.gridx=0; g.gridy=0; form.add(lbl("Booking ID:"), g);
+        g.gridx=1;
+        lblBookingId = new JLabel(String.valueOf(bookingId));
+        lblBookingId.setFont(new Font("SansSerif", Font.BOLD, 14));
+        lblBookingId.setForeground(HDR);
+        form.add(lblBookingId, g);
 
         // Amount
-        gbc.gridx = 0; gbc.gridy = 1;
-        formPanel.add(new JLabel("Amount (₹):"), gbc);
-        gbc.gridx = 1;
-        tfAmount = new JTextField(15);
-        tfAmount.setEditable(false);   // auto-filled when booking is selected
-        tfAmount.setBackground(new Color(235, 235, 235));
-        formPanel.add(tfAmount, gbc);
+        g.gridx=0; g.gridy=1; form.add(lbl("Amount Payable:"), g);
+        g.gridx=1;
+        lblAmount = new JLabel("₹ " + String.format("%.2f", amount));
+        lblAmount.setFont(new Font("SansSerif", Font.BOLD, 16));
+        lblAmount.setForeground(new Color(192, 57, 43));
+        form.add(lblAmount, g);
 
-        // Payment Method
-        gbc.gridx = 0; gbc.gridy = 2;
-        formPanel.add(new JLabel("Payment Method:"), gbc);
-        gbc.gridx = 1;
-        cbMethod = new JComboBox<>(new String[]{"Cash", "Credit Card", "Debit Card",
-                                                "UPI", "Net Banking"});
-        formPanel.add(cbMethod, gbc);
+        // Divider
+        g.gridx=0; g.gridy=2; g.gridwidth=2;
+        JSeparator sep = new JSeparator();
+        form.add(sep, g);
+        g.gridwidth=1;
 
-        mainPanel.add(formPanel, BorderLayout.CENTER);
+        // Payment method
+        g.gridx=0; g.gridy=3; form.add(lbl("Payment Method:"), g);
+        g.gridx=1;
+        cbMethod = new JComboBox<>(new String[]{
+            "Cash", "Credit Card", "Debit Card", "UPI", "Net Banking"
+        });
+        cbMethod.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        cbMethod.setPreferredSize(new Dimension(180, 30));
+        form.add(cbMethod, g);
 
-        // ---- Buttons ----
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 5));
-        btnPanel.setBackground(Color.WHITE);
+        // Date info
+        g.gridx=0; g.gridy=4; form.add(lbl("Payment Date:"), g);
+        g.gridx=1;
+        JLabel lblDate = new JLabel(LocalDate.now().toString());
+        lblDate.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        form.add(lblDate, g);
 
-        btnPay   = new JButton("Pay Now");
-        btnClose = new JButton("Cancel");
-
-        btnPay.setBackground(new Color(30, 130, 60));
-        btnPay.setForeground(Color.WHITE);
+        // Pay button
+        g.gridx=0; g.gridy=5; g.gridwidth=2;
+        JButton btnPay = new JButton("✅  Complete Payment");
+        btnPay.setBackground(GRN);
+        btnPay.setForeground(WHITE);
+        btnPay.setFont(new Font("SansSerif", Font.BOLD, 14));
         btnPay.setFocusPainted(false);
-        btnPay.setPreferredSize(new Dimension(110, 35));
+        btnPay.setBorderPainted(false);
+        btnPay.setPreferredSize(new Dimension(220, 40));
+        btnPay.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        form.add(btnPay, g);
 
-        btnPanel.add(btnPay);
-        btnPanel.add(btnClose);
-        mainPanel.add(btnPanel, BorderLayout.SOUTH);
+        // Skip button
+        g.gridy=6;
+        JButton btnSkip = new JButton("Pay Later / Close");
+        btnSkip.setBorderPainted(false);
+        btnSkip.setContentAreaFilled(false);
+        btnSkip.setForeground(Color.GRAY);
+        btnSkip.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        btnSkip.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        form.add(btnSkip, g);
 
-        add(mainPanel);
+        main.add(form, BorderLayout.CENTER);
+        add(main);
 
-        // ---- Events ----
-        cbBooking.addActionListener(e -> fillAmount());
-        btnPay.addActionListener(e -> doPayment());
-        btnClose.addActionListener(e -> dispose());
-
-        fillAmount(); // fill immediately for first selection
+        getRootPane().setDefaultButton(btnPay);
+        btnPay.addActionListener(e  -> handlePayment());
+        btnSkip.addActionListener(e -> dispose());
     }
 
-    private void loadConfirmedBookings() {
-        confirmedBookings = bookingDAO.getBookingsByUser(currentUser.getUserId());
-        cbBooking.removeAllItems();
-        boolean anyConfirmed = false;
-        for (Booking b : confirmedBookings) {
-            if ("Confirmed".equalsIgnoreCase(b.getBookingStatus())) {
-                cbBooking.addItem("Booking #" + b.getBookingId()
-                        + " | Room " + b.getRoomNumber()
-                        + " | ₹" + String.format("%.2f", b.getTotalAmount()));
-                anyConfirmed = true;
-            }
-        }
-        if (!anyConfirmed) {
-            cbBooking.addItem("No confirmed bookings");
-        }
-    }
+    private void handlePayment() {
+        String method    = (String) cbMethod.getSelectedItem();
+        String todayStr  = LocalDate.now().toString();
 
-    /** Auto-fill amount from selected booking */
-    private void fillAmount() {
-        int idx = cbBooking.getSelectedIndex();
-        if (idx < 0 || confirmedBookings.isEmpty()) return;
+        boolean ok = paymentDAO.addPayment(bookingId, amount, todayStr, method);
 
-        // Filter only confirmed ones (mirroring loadConfirmedBookings)
-        int confirmed = 0;
-        for (Booking b : confirmedBookings) {
-            if ("Confirmed".equalsIgnoreCase(b.getBookingStatus())) {
-                if (confirmed == idx) {
-                    tfAmount.setText(String.format("%.2f", b.getTotalAmount()));
-                    return;
-                }
-                confirmed++;
-            }
-        }
-    }
+        if (ok) {
+            // ── Receipt dialog ─────────────────────────────
+            String receipt =
+                "╔═══════════════════════════════╗\n" +
+                "║     PAYMENT RECEIPT           ║\n" +
+                "╠═══════════════════════════════╣\n" +
+                "  Booking ID   : " + bookingId      + "\n" +
+                "  Amount Paid  : ₹" + String.format("%.2f", amount) + "\n" +
+                "  Method       : " + method          + "\n" +
+                "  Date         : " + todayStr        + "\n" +
+                "  Status       : PAID ✅\n" +
+                "╚═══════════════════════════════╝\n" +
+                "\n  Thank you for choosing our hotel!";
 
-    private void doPayment() {
-        int idx = cbBooking.getSelectedIndex();
-        if (idx < 0 || confirmedBookings.isEmpty() || cbBooking.getItemAt(0).toString().startsWith("No")) {
-            JOptionPane.showMessageDialog(this,
-                "No confirmed bookings available for payment.");
-            return;
-        }
-
-        // Get selected confirmed booking
-        int confirmed = 0;
-        Booking selected = null;
-        for (Booking b : confirmedBookings) {
-            if ("Confirmed".equalsIgnoreCase(b.getBookingStatus())) {
-                if (confirmed == idx) { selected = b; break; }
-                confirmed++;
-            }
-        }
-        if (selected == null) return;
-
-        // Check if payment already exists
-        Payment existing = paymentDAO.getByBookingId(selected.getBookingId());
-        if (existing != null) {
-            JOptionPane.showMessageDialog(this,
-                "Payment already recorded for this booking.", "Info",
-                JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-
-        String method = (String) cbMethod.getSelectedItem();
-        double amount = selected.getTotalAmount();
-        Date   today  = new Date(System.currentTimeMillis());
-
-        Payment payment = new Payment(
-            selected.getBookingId(), amount, today, method, "Paid"
-        );
-
-        boolean success = paymentDAO.add(payment);
-        if (success) {
-            JOptionPane.showMessageDialog(this,
-                "Payment of ₹" + String.format("%.2f", amount) + " recorded successfully!\n"
-                + "Method: " + method + "\n"
-                + "Date: " + today,
+            JOptionPane.showMessageDialog(this, receipt,
                 "Payment Successful", JOptionPane.INFORMATION_MESSAGE);
             dispose();
         } else {
             JOptionPane.showMessageDialog(this,
-                "Payment failed. Please try again.", "Error", JOptionPane.ERROR_MESSAGE);
+                "Payment recording failed. Please try again.", "Error",
+                JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private JLabel lbl(String t) {
+        JLabel l = new JLabel(t);
+        l.setFont(new Font("SansSerif", Font.BOLD, 13));
+        l.setForeground(DARK);
+        return l;
     }
 }

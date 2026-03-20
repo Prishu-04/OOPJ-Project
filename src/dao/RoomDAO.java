@@ -8,41 +8,126 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * RoomDAO - Handles all database operations for Rooms.
+ * RoomDAO - All database operations for the rooms table.
  */
-public class RoomDAO implements IDao<Room, Integer> {
+public class RoomDAO {
 
-    // -------------------------------------------------------
-    // ADD
-    // -------------------------------------------------------
-    @Override
-    public boolean add(Room room) {
-        String sql = "INSERT INTO rooms (room_number, room_type, price, status) VALUES (?, ?, ?, ?)";
+    // ──────────────────────────────────────────────────────
+    // ADD a new room
+    // ──────────────────────────────────────────────────────
+    public boolean addRoom(String roomNumber, String roomType,
+                           double price, String status) {
+        String sql = "INSERT INTO rooms (room_number, room_type, price, status) " +
+                     "VALUES (?, ?, ?, ?)";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, room.getRoomNumber());
-            ps.setString(2, room.getRoomType());
-            ps.setDouble(3, room.getPrice());
-            ps.setString(4, room.getStatus());
+            ps.setString(1, roomNumber);
+            ps.setString(2, roomType);
+            ps.setDouble(3, price);
+            ps.setString(4, status);
+            ps.executeUpdate();
+            return true;
 
-            return ps.executeUpdate() > 0;
-
-        } catch (SQLIntegrityConstraintViolationException e) {
-            // Duplicate room number
-            return false;
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Add room error: " + e.getMessage());
             return false;
         }
     }
 
-    // -------------------------------------------------------
-    // GET BY ID
-    // -------------------------------------------------------
-    @Override
-    public Room getById(Integer roomId) {
-        String sql = "SELECT * FROM rooms WHERE room_id = ?";
+    // ──────────────────────────────────────────────────────
+    // UPDATE room details
+    // ──────────────────────────────────────────────────────
+    public boolean updateRoom(int roomId, String roomNumber, String roomType,
+                              double price, String status) {
+        String sql = "UPDATE rooms SET room_number=?, room_type=?, price=?, status=? " +
+                     "WHERE room_id=?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, roomNumber);
+            ps.setString(2, roomType);
+            ps.setDouble(3, price);
+            ps.setString(4, status);
+            ps.setInt(5, roomId);
+            ps.executeUpdate();
+            return true;
+
+        } catch (SQLException e) {
+            System.err.println("Update room error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    // DELETE a room
+    // ──────────────────────────────────────────────────────
+    public boolean deleteRoom(int roomId) {
+        String sql = "DELETE FROM rooms WHERE room_id=?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, roomId);
+            ps.executeUpdate();
+            return true;
+
+        } catch (SQLException e) {
+            System.err.println("Delete room error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    // GET ALL rooms
+    // ──────────────────────────────────────────────────────
+    public List<Room> getAllRooms() {
+        return getRooms("SELECT * FROM rooms ORDER BY room_number", null);
+    }
+
+    // ──────────────────────────────────────────────────────
+    // GET AVAILABLE rooms only
+    // ──────────────────────────────────────────────────────
+    public List<Room> getAvailableRooms() {
+        return getRooms(
+            "SELECT * FROM rooms WHERE status = 'Available' ORDER BY room_number",
+            null
+        );
+    }
+
+    // ──────────────────────────────────────────────────────
+    // SEARCH rooms by type
+    // ──────────────────────────────────────────────────────
+    public List<Room> searchRoomsByType(String roomType) {
+        return getRooms(
+            "SELECT * FROM rooms WHERE room_type LIKE ? AND status='Available' ORDER BY room_number",
+            "%" + roomType + "%"
+        );
+    }
+
+    // ──────────────────────────────────────────────────────
+    // UPDATE room status (Available / Booked)
+    // ──────────────────────────────────────────────────────
+    public boolean updateRoomStatus(int roomId, String status) {
+        String sql = "UPDATE rooms SET status=? WHERE room_id=?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, status);
+            ps.setInt(2, roomId);
+            ps.executeUpdate();
+            return true;
+
+        } catch (SQLException e) {
+            System.err.println("Update room status error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // ──────────────────────────────────────────────────────
+    // GET room by ID
+    // ──────────────────────────────────────────────────────
+    public Room getRoomById(int roomId) {
+        String sql = "SELECT * FROM rooms WHERE room_id=?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
@@ -52,145 +137,31 @@ public class RoomDAO implements IDao<Room, Integer> {
                 return mapRow(rs);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Get room by ID error: " + e.getMessage());
         }
         return null;
     }
 
-    // -------------------------------------------------------
-    // GET ALL
-    // -------------------------------------------------------
-    @Override
-    public List<Room> getAll() {
-        List<Room> rooms = new ArrayList<>();
-        String sql = "SELECT * FROM rooms ORDER BY room_number";
+    // ──────────────────────────────────────────────────────
+    // Private helper: execute query and map results
+    // ──────────────────────────────────────────────────────
+    private List<Room> getRooms(String sql, String param) {
+        List<Room> list = new ArrayList<>();
         try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            while (rs.next()) {
-                rooms.add(mapRow(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return rooms;
-    }
-
-    // -------------------------------------------------------
-    // GET AVAILABLE ROOMS (for customers)
-    // -------------------------------------------------------
-    public List<Room> getAvailableRooms() {
-        List<Room> rooms = new ArrayList<>();
-        String sql = "SELECT * FROM rooms WHERE status = 'Available' ORDER BY room_number";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                rooms.add(mapRow(rs));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return rooms;
-    }
-
-    // -------------------------------------------------------
-    // SEARCH by type or status
-    // -------------------------------------------------------
-    public List<Room> searchRooms(String type, String status) {
-        List<Room> rooms = new ArrayList<>();
-        StringBuilder sql = new StringBuilder("SELECT * FROM rooms WHERE 1=1");
-
-        if (type != null && !type.isEmpty() && !type.equals("All")) {
-            sql.append(" AND room_type = ?");
-        }
-        if (status != null && !status.isEmpty() && !status.equals("All")) {
-            sql.append(" AND status = ?");
-        }
-        sql.append(" ORDER BY room_number");
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-
-            int idx = 1;
-            if (type != null && !type.isEmpty() && !type.equals("All")) {
-                ps.setString(idx++, type);
-            }
-            if (status != null && !status.isEmpty() && !status.equals("All")) {
-                ps.setString(idx, status);
-            }
-
+            if (param != null) ps.setString(1, param);
             ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-                rooms.add(mapRow(rs));
+                list.add(mapRow(rs));
             }
+
         } catch (SQLException e) {
-            e.printStackTrace();
+            System.err.println("Get rooms error: " + e.getMessage());
         }
-        return rooms;
+        return list;
     }
 
-    // -------------------------------------------------------
-    // UPDATE
-    // -------------------------------------------------------
-    @Override
-    public boolean update(Room room) {
-        String sql = "UPDATE rooms SET room_number=?, room_type=?, price=?, status=? WHERE room_id=?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, room.getRoomNumber());
-            ps.setString(2, room.getRoomType());
-            ps.setDouble(3, room.getPrice());
-            ps.setString(4, room.getStatus());
-            ps.setInt(5, room.getRoomId());
-
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    // -------------------------------------------------------
-    // UPDATE STATUS ONLY
-    // -------------------------------------------------------
-    public boolean updateStatus(int roomId, String status) {
-        String sql = "UPDATE rooms SET status=? WHERE room_id=?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, status);
-            ps.setInt(2, roomId);
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    // -------------------------------------------------------
-    // DELETE
-    // -------------------------------------------------------
-    @Override
-    public boolean delete(Integer roomId) {
-        String sql = "DELETE FROM rooms WHERE room_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setInt(1, roomId);
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    // -------------------------------------------------------
-    // Helper: map ResultSet row to Room object
-    // -------------------------------------------------------
     private Room mapRow(ResultSet rs) throws SQLException {
         return new Room(
             rs.getInt("room_id"),

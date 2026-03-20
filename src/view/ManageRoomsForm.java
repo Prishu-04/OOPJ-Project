@@ -9,78 +9,100 @@ import java.awt.*;
 import java.util.List;
 
 /**
- * ManageRoomsForm - Admin views all rooms in a JTable and can update or delete them.
+ * ManageRoomsForm - Admin view to edit or delete existing rooms.
+ * Uses JTable for display.
  */
 public class ManageRoomsForm extends JFrame {
 
     private JTable table;
     private DefaultTableModel tableModel;
-    private JButton btnUpdate, btnDelete, btnRefresh, btnClose;
 
-    private RoomDAO roomDAO = new RoomDAO();
+    private final RoomDAO roomDAO = new RoomDAO();
+
+    private static final Color BG    = new Color(245, 247, 250);
+    private static final Color HDR   = new Color(44,  62,  80);
+    private static final Color BLU   = new Color(41,  128, 185);
+    private static final Color RED   = new Color(192, 57,  43);
+    private static final Color GRN   = new Color(39,  174, 96);
+    private static final Color WHITE = Color.WHITE;
 
     public ManageRoomsForm() {
-        setTitle("Manage Rooms");
-        setSize(700, 450);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLocationRelativeTo(null);
         initUI();
         loadRooms();
     }
 
     private void initUI() {
-        JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+        setTitle("Manage Rooms");
+        setSize(720, 480);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setLocationRelativeTo(null);
 
-        JLabel lblTitle = new JLabel("All Rooms", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Arial", Font.BOLD, 16));
-        mainPanel.add(lblTitle, BorderLayout.NORTH);
+        JPanel main = new JPanel(new BorderLayout());
+        main.setBackground(BG);
 
-        // ---- Table ----
-        String[] columns = {"ID", "Room No", "Type", "Price (₹)", "Status"};
-        tableModel = new DefaultTableModel(columns, 0) {
-            @Override
-            public boolean isCellEditable(int row, int col) { return false; }
+        // Header
+        JPanel header = new JPanel(new GridBagLayout());
+        header.setBackground(HDR);
+        header.setPreferredSize(new Dimension(720, 55));
+        JLabel title = new JLabel("✏️  Manage Rooms");
+        title.setFont(new Font("SansSerif", Font.BOLD, 16));
+        title.setForeground(WHITE);
+        header.add(title);
+        main.add(header, BorderLayout.NORTH);
+
+        // Table
+        String[] cols = {"ID", "Room No", "Type", "Price (₹)", "Status"};
+        tableModel = new DefaultTableModel(cols, 0) {
+            @Override public boolean isCellEditable(int r, int c) { return false; }
         };
         table = new JTable(tableModel);
+        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        table.setRowHeight(26);
+        table.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 13));
+        table.getTableHeader().setBackground(BLU);
+        table.getTableHeader().setForeground(WHITE);
+        table.setSelectionBackground(new Color(174, 214, 241));
+        table.setGridColor(new Color(220, 220, 220));
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
-        table.setRowHeight(24);
 
-        JScrollPane scrollPane = new JScrollPane(table);
-        mainPanel.add(scrollPane, BorderLayout.CENTER);
+        // Column widths
+        table.getColumnModel().getColumn(0).setPreferredWidth(40);
+        table.getColumnModel().getColumn(1).setPreferredWidth(80);
+        table.getColumnModel().getColumn(2).setPreferredWidth(100);
+        table.getColumnModel().getColumn(3).setPreferredWidth(100);
+        table.getColumnModel().getColumn(4).setPreferredWidth(100);
 
-        // ---- Buttons ----
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 8));
+        JScrollPane scroll = new JScrollPane(table);
+        scroll.setBorder(BorderFactory.createEmptyBorder(10, 15, 5, 15));
+        main.add(scroll, BorderLayout.CENTER);
 
-        btnUpdate  = new JButton("Update Selected");
-        btnDelete  = new JButton("Delete Selected");
-        btnRefresh = new JButton("Refresh");
-        btnClose   = new JButton("Close");
+        // Button bar
+        JPanel btnBar = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
+        btnBar.setBackground(BG);
 
-        styleBtn(btnUpdate,  new Color(30, 100, 180));
-        styleBtn(btnDelete,  new Color(180, 40, 40));
-        styleBtn(btnRefresh, new Color(80, 140, 80));
+        JButton btnEdit   = btn("✏️ Edit Selected",   BLU);
+        JButton btnDelete = btn("🗑️ Delete Selected",  RED);
+        JButton btnToggle = btn("🔄 Toggle Status",    GRN);
+        JButton btnRefresh= btn("🔃 Refresh",          new Color(127, 140, 141));
 
-        btnPanel.add(btnUpdate);
-        btnPanel.add(btnDelete);
-        btnPanel.add(btnRefresh);
-        btnPanel.add(btnClose);
-        mainPanel.add(btnPanel, BorderLayout.SOUTH);
+        btnBar.add(btnEdit);
+        btnBar.add(btnDelete);
+        btnBar.add(btnToggle);
+        btnBar.add(btnRefresh);
+        main.add(btnBar, BorderLayout.SOUTH);
 
-        add(mainPanel);
+        add(main);
 
-        // ---- Events ----
+        btnEdit.addActionListener(e -> editSelected());
+        btnDelete.addActionListener(e -> deleteSelected());
+        btnToggle.addActionListener(e -> toggleStatus());
         btnRefresh.addActionListener(e -> loadRooms());
-        btnClose.addActionListener(e -> dispose());
-
-        btnDelete.addActionListener(e -> deleteSelectedRoom());
-        btnUpdate.addActionListener(e -> updateSelectedRoom());
     }
 
+    // ── Load all rooms into table ──────────────────────────
     private void loadRooms() {
         tableModel.setRowCount(0);
-        List<Room> rooms = roomDAO.getAll();
+        List<Room> rooms = roomDAO.getAllRooms();
         for (Room r : rooms) {
             tableModel.addRow(new Object[]{
                 r.getRoomId(), r.getRoomNumber(), r.getRoomType(),
@@ -89,96 +111,98 @@ public class ManageRoomsForm extends JFrame {
         }
     }
 
-    private void deleteSelectedRoom() {
+    // ── Edit selected row ─────────────────────────────────
+    private void editSelected() {
         int row = table.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a room to delete.");
-            return;
-        }
-        int roomId = (int) tableModel.getValueAt(row, 0);
-        String roomNo = (String) tableModel.getValueAt(row, 1);
-
-        int confirm = JOptionPane.showConfirmDialog(this,
-            "Delete Room " + roomNo + "? This cannot be undone.", "Confirm Delete",
-            JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
-
-        if (confirm == JOptionPane.YES_OPTION) {
-            boolean success = roomDAO.delete(roomId);
-            if (success) {
-                JOptionPane.showMessageDialog(this, "Room deleted successfully.");
-                loadRooms();
-            } else {
-                JOptionPane.showMessageDialog(this,
-                    "Could not delete room. It may have associated bookings.", "Error",
-                    JOptionPane.ERROR_MESSAGE);
-            }
-        }
-    }
-
-    private void updateSelectedRoom() {
-        int row = table.getSelectedRow();
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Please select a room to update.");
-            return;
-        }
+        if (row < 0) { noSelection(); return; }
 
         int    roomId     = (int)    tableModel.getValueAt(row, 0);
         String roomNumber = (String) tableModel.getValueAt(row, 1);
         String roomType   = (String) tableModel.getValueAt(row, 2);
-        String priceStr   = (String) tableModel.getValueAt(row, 3);
+        double price      = Double.parseDouble(
+                                tableModel.getValueAt(row, 3).toString());
         String status     = (String) tableModel.getValueAt(row, 4);
-        double price      = Double.parseDouble(priceStr.replace(",", ""));
 
-        // Build a small dialog for editing
-        JTextField  tfNumber = new JTextField(roomNumber, 12);
-        JComboBox<String> cbType = new JComboBox<>(new String[]{"Single","Double","Suite","Deluxe"});
+        // Inline edit dialog
+        JTextField tfNum   = new JTextField(roomNumber);
+        String[]   types   = {"Single","Double","Suite","Deluxe","Family"};
+        JComboBox<String> cbType = new JComboBox<>(types);
         cbType.setSelectedItem(roomType);
-        JTextField  tfPrice  = new JTextField(priceStr, 12);
-        JComboBox<String> cbStatus = new JComboBox<>(new String[]{"Available","Booked","Maintenance"});
+        JTextField tfPrice = new JTextField(String.valueOf(price));
+        String[] statuses = {"Available","Booked","Maintenance"};
+        JComboBox<String> cbStatus = new JComboBox<>(statuses);
         cbStatus.setSelectedItem(status);
 
-        JPanel panel = new JPanel(new GridLayout(4, 2, 6, 6));
-        panel.add(new JLabel("Room Number:")); panel.add(tfNumber);
+        JPanel panel = new JPanel(new GridLayout(4, 2, 5, 8));
+        panel.add(new JLabel("Room Number:")); panel.add(tfNum);
         panel.add(new JLabel("Room Type:"));   panel.add(cbType);
-        panel.add(new JLabel("Price (₹):"));    panel.add(tfPrice);
-        panel.add(new JLabel("Status:"));       panel.add(cbStatus);
+        panel.add(new JLabel("Price (₹):"));   panel.add(tfPrice);
+        panel.add(new JLabel("Status:"));      panel.add(cbStatus);
 
-        int result = JOptionPane.showConfirmDialog(this, panel, "Update Room",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        int result = JOptionPane.showConfirmDialog(this, panel,
+            "Edit Room #" + roomId, JOptionPane.OK_CANCEL_OPTION);
 
         if (result == JOptionPane.OK_OPTION) {
-            String newNumber = tfNumber.getText().trim();
-            String newType   = (String) cbType.getSelectedItem();
-            String newStatus = (String) cbStatus.getSelectedItem();
-            double newPrice;
-
-            if (newNumber.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Room number cannot be empty.");
-                return;
-            }
-
             try {
-                newPrice = Double.parseDouble(tfPrice.getText().trim());
-                if (newPrice <= 0) throw new NumberFormatException();
+                double newPrice = Double.parseDouble(tfPrice.getText().trim());
+                boolean ok = roomDAO.updateRoom(
+                    roomId, tfNum.getText().trim(),
+                    (String) cbType.getSelectedItem(),
+                    newPrice,
+                    (String) cbStatus.getSelectedItem()
+                );
+                if (ok) { JOptionPane.showMessageDialog(this, "Room updated!"); loadRooms(); }
+                else      JOptionPane.showMessageDialog(this, "Update failed.", "Error", JOptionPane.ERROR_MESSAGE);
             } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(this, "Enter a valid positive price.");
-                return;
-            }
-
-            Room updated = new Room(roomId, newNumber, newType, newPrice, newStatus);
-            boolean success = roomDAO.update(updated);
-            if (success) {
-                JOptionPane.showMessageDialog(this, "Room updated successfully.");
-                loadRooms();
-            } else {
-                JOptionPane.showMessageDialog(this, "Update failed.", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Invalid price.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
-    private void styleBtn(JButton btn, Color bg) {
-        btn.setBackground(bg);
-        btn.setForeground(Color.WHITE);
-        btn.setFocusPainted(false);
+    // ── Delete selected row ───────────────────────────────
+    private void deleteSelected() {
+        int row = table.getSelectedRow();
+        if (row < 0) { noSelection(); return; }
+
+        int roomId = (int) tableModel.getValueAt(row, 0);
+        int confirm = JOptionPane.showConfirmDialog(this,
+            "Delete Room ID " + roomId + "?", "Confirm Delete",
+            JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            boolean ok = roomDAO.deleteRoom(roomId);
+            if (ok) { JOptionPane.showMessageDialog(this, "Room deleted."); loadRooms(); }
+            else      JOptionPane.showMessageDialog(this, "Delete failed.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // ── Toggle Available ↔ Booked ─────────────────────────
+    private void toggleStatus() {
+        int row = table.getSelectedRow();
+        if (row < 0) { noSelection(); return; }
+
+        int    roomId = (int)    tableModel.getValueAt(row, 0);
+        String status = (String) tableModel.getValueAt(row, 4);
+        String newStatus = "Available".equals(status) ? "Booked" : "Available";
+
+        boolean ok = roomDAO.updateRoomStatus(roomId, newStatus);
+        if (ok) { JOptionPane.showMessageDialog(this, "Status → " + newStatus); loadRooms(); }
+    }
+
+    private void noSelection() {
+        JOptionPane.showMessageDialog(this, "Please select a room first.",
+            "No Selection", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private JButton btn(String text, Color bg) {
+        JButton b = new JButton(text);
+        b.setBackground(bg);
+        b.setForeground(WHITE);
+        b.setFont(new Font("SansSerif", Font.BOLD, 12));
+        b.setFocusPainted(false);
+        b.setBorderPainted(false);
+        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        b.setPreferredSize(new Dimension(150, 32));
+        return b;
     }
 }
